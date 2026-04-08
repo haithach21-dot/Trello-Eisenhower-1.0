@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Trello Power-Up Connector</title>
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+</head>
+<body>
+  <script>
+    TrelloPowerUp.initialize({
+      'card-back-section': function(t, options) {
+        return {
+          title: 'Ma Trận Eisenhower',
+          icon: 'https://p.trellocdn.com/power-up/power-up.svg',
+          content: {
+            type: 'iframe',
+            url: t.signUrl('./index.html'),
+            height: 160
+          }
+        };
+      },
+      'card-badges': function(t, options) {
+        return t.get('card', 'shared', 'eisenhower').then(function(data) {
+          if (!data || !data.imp || !data.urg) return [];
+          let labelText = ""; let badgeColor = "light-gray";
+          if (data.imp >= 4 && data.urg >= 4) { labelText = "Q1: LÀM NGAY"; badgeColor = "red"; }
+          else if (data.imp >= 4 && data.urg < 4) { labelText = "Q2: LÊN LỊCH"; badgeColor = "yellow"; }
+          else if (data.imp < 4 && data.urg >= 4) { labelText = "Q3: ỦY QUYỀN"; badgeColor = "orange"; }
+          else { labelText = "Q4: XÓA BỎ"; badgeColor = "light-gray"; }
+          return [{ text: labelText, color: badgeColor }];
+        });
+      },
+      'board-buttons': function(t, options) {
+        return [{
+          icon: 'https://p.trellocdn.com/power-up/power-up.svg',
+          text: 'Ma Trận Tổng Thể',
+          callback: function(t) {
+            return t.modal({
+              title: 'Ma Trận Eisenhower',
+              url: t.signUrl('./matrix-board.html'),
+              fullscreen: true
+            });
+          }
+        }];
+      }
+    });
+  </script>
+</body>
+</html>

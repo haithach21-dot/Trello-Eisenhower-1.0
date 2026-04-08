@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <style>
+    /* 1. ÉP CỨNG TOÀN BỘ KHUNG NHÌN */
+    body, html { 
+      height: 100%; margin: 0; padding: 0; 
+      font-family: -apple-system, sans-serif; 
+      background: #f4f5f7; color: #172b4d; 
+      overflow: hidden; /* Tuyệt đối không cho cuộn cả trang */
+    }
+
+    .main-layout { 
+      display: grid; 
+      grid-template-columns: 7.5fr 2.5fr; 
+      gap: 15px; 
+      padding: 15px;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+    
+    /* 2. ÉP 4 Ô MA TRẬN ĐỀU NHAU TỐI ĐA */
+    .matrix-grid { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr; 
+      grid-template-rows: 1fr 1fr; /* Chia 2 hàng bằng nhau tuyệt đối */
+      gap: 12px;
+      height: 100%;
+      min-height: 0; /* Quan trọng để Grid không bị nở */
+    }
+    
+    .quadrant, .pending-column { 
+      background: #ffffff; border-radius: 8px; padding: 12px; 
+      display: flex; flex-direction: column; 
+      border: 1px solid #dfe1e6; 
+      box-shadow: 0 2px 4px rgba(9, 30, 66, 0.08);
+      min-height: 0; /* Ép nội dung phải thu nhỏ lại */
+      overflow: hidden;
+    }
+    
+    .pending-column { background: #f0f2f5; border: 2px dashed #c1c7d0; box-shadow: none; }
+    
+    .q-title { 
+      font-weight: 700; font-size: 11px; margin-bottom: 10px; padding-bottom: 6px; 
+      border-bottom: 1px solid #ebecf0; display: flex; align-items: center; gap: 8px; 
+      text-transform: uppercase; flex-shrink: 0;
+    }
+    .q-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; }
+    
+    /* MÀU SẮC TIÊU ĐỀ */
+    .q1-title::before { background: #eb5a46; box-shadow: 0 0 4px rgba(235,90,70,0.4); }
+    .q2-title::before { background: #0079bf; box-shadow: 0 0 4px rgba(0,121,191,0.4); }
+    .q3-title::before { background: #ff9f1a; box-shadow: 0 0 4px rgba(255,159,26,0.4); }
+    .q4-title::before { background: #8993a4; }
+
+    /* 3. DANH SÁCH THẺ - NƠI DUY NHẤT ĐƯỢC PHÉP CUỘN */
+    .card-list { 
+      overflow-y: auto; 
+      flex-grow: 1; 
+      min-height: 0; /* Quan trọng cho Flexbox */
+      padding-right: 4px;
+    }
+    
+    .card-item { 
+      padding: 8px 10px; margin-bottom: 6px; border-radius: 5px; 
+      border: 1px solid #dfe1e6; background: #fff; 
+      display: flex; align-items: center; justify-content: space-between; 
+      cursor: grab; transition: background 0.15s ease;
+    }
+    
+    #q1 .card-item { border-left: 3px solid #eb5a46; } 
+    #q2 .card-item { border-left: 3px solid #0079bf; } 
+    #q3 .card-item { border-left: 3px solid #ff9f1a; } 
+    #q4 .card-item { border-left: 3px solid #8993a4; }
+    #pending .card-item { border-left: 3px solid #5e6c84; border-left-style: dashed; }
+
+    .card-item.is-done { opacity: 0.4; filter: grayscale(1); border-left-color: #dfe1e6 !important; }
+    .card-main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .card-name { font-weight: 500; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    .deadline-tag { 
+      font-size: 9px; padding: 1px 5px; border-radius: 3px; 
+      background: #f4f5f7; color: #5e6c84; font-weight: 600;
+      white-space: nowrap; margin-left: 8px; border: 1px solid #ebecf0;
+    }
+    .deadline-overdue { color: #eb5a46; background: #fff4f0; border-color: #ffd2cc; }
+
+    .checkbox-custom { width: 14px; height: 14px; cursor: pointer; margin: 0; flex-shrink: 0; }
+    .sortable-ghost { opacity: 0.1; background: #0079bf !important; }
+    
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <div class="main-layout">
+    <div class="matrix-grid">
+      <div class="quadrant"><div class="q-title q1-title">Q1: Làm ngay</div><div class="card-list" id="q1"></div></div>
+      <div class="quadrant"><div class="q-title q2-title">Q2: Lên lịch</div><div class="card-list" id="q2"></div></div>
+      <div class="quadrant"><div class="q-title q3-title">Q3: Ủy quyền</div><div class="card-list" id="q3"></div></div>
+      <div class="quadrant"><div class="q-title q4-title">Q4: Xóa bỏ</div><div class="card-list" id="q4"></div></div>
+    </div>
+    <div class="pending-column">
+      <div class="q-title pending-title">📥 Chờ phân loại</div>
+      <div class="card-list" id="pending"></div>
+    </div>
+  </div>
+
+  <script>
+    const t = TrelloPowerUp.iframe();
+
+    function formatDeadline(dueStr) {
+      if (!dueStr) return null;
+      const d = new Date(dueStr);
+      return { label: `${d.getDate()}/${d.getMonth() + 1}`, isOverdue: d < new Date() };
+    }
+
+    function refreshGradients(listId) {
+      const list = document.getElementById(listId);
+      if (!list) return;
+      const items = list.querySelectorAll('.card-item:not(.is-done)');
+      const total = items.length;
+      let h, s, lStart;
+      if (listId === 'q1') { h = 9; s = 80; lStart = 95; }
+      else if (listId === 'q2') { h = 202; s = 90; lStart = 94; }
+      else if (listId === 'q3') { h = 35; s = 90; lStart = 95; }
+      else if (listId === 'q4') { h = 210; s = 16; lStart = 96; }
+      else { h = 0; s = 0; lStart = 97; }
+
+      items.forEach((item, i) => {
+        const lightness = total > 1 ? lStart + ((100 - lStart) * (i / (total - 1))) : lStart;
+        item.style.backgroundColor = `hsl(${h}, ${s}%, ${lightness}%)`;
+      });
+      list.querySelectorAll('.is-done').forEach(el => el.style.backgroundColor = '#fafbfc');
+    }
+
+    const save = () => {
+      const ids = (qid) => [...document.getElementById(qid).children].map(e => e.dataset.id);
+      const data = { pending: ids('pending'), q1: ids('q1'), q2: ids('q2'), q3: ids('q3'), q4: ids('q4') };
+      t.set('board', 'shared', 'matrixOrder', data);
+      Object.keys(data).forEach(k => {
+        if (k === 'pending') return;
+        let i = 1, u = 1;
+        if(k==='q1'){i=5;u=5;} else if(k==='q2'){i=5;u=1;} else if(k==='q3'){i=1;u=5;}
+        data[k].forEach(id => t.set(id, 'shared', 'eisenhower', { imp: i, urg: u }));
+      });
+    };
+
+    t.render(() => {
+      Promise.all([
+        t.cards('id', 'name', 'due'),
+        t.get('board', 'shared', 'matrixOrder', {pending:[], q1:[], q2:[], q3:[], q4:[]}),
+        t.get('board', 'shared', 'matrixMap', {})
+      ]).then(async ([cards, order, map]) => {
+        const cat = {pending:[], q1:[], q2:[], q3:[], q4:[]};
+        for(let c of cards) {
+          c.done = await t.get(c.id, 'shared', 'completed', false);
+          let q = 'pending'; 
+          if (order.q1.includes(c.id)) q = 'q1';
+          else if (order.q2.includes(c.id)) q = 'q2';
+          else if (order.q3.includes(c.id)) q = 'q3';
+          else if (order.q4.includes(c.id)) q = 'q4';
+          else if (order.pending && order.pending.includes(c.id)) q = 'pending';
+          else if (map[c.id]) {
+            const d = map[c.id];
+            if(d.imp>=4 && d.urg>=4) q='q1'; else if(d.imp>=4) q='q2'; else if(d.urg>=4) q='q3'; else q='q4';
+          }
+          cat[q].push(c);
+        }
+
+        Object.keys(cat).forEach(k => {
+          const res = document.getElementById(k); res.innerHTML = '';
+          cat[k].sort((a,b) => (order[k].indexOf(a.id)===-1?99:order[k].indexOf(a.id)) - (order[k].indexOf(b.id)===-1?99:order[k].indexOf(b.id))).forEach(c => {
+            const deadline = formatDeadline(c.due);
+            const div = document.createElement('div'); div.className = `card-item ${c.done?'is-done':''}`; div.dataset.id = c.id;
+            div.innerHTML = `<div class="card-main"><input type="checkbox" class="checkbox-custom" ${c.done?'checked':''}> <span class="card-name" title="${c.name}">${c.name}</span></div>${deadline ? `<span class="deadline-tag ${deadline.isOverdue ? 'deadline-overdue' : ''}">${deadline.label}</span>` : ''}`;
+            div.querySelector('input').onclick = (e) => {
+              e.stopPropagation();
+              t.set(c.id, 'shared', 'completed', e.target.checked).then(() => { div.classList.toggle('is-done', e.target.checked); refreshGradients(k); });
+            };
+            div.ondblclick = () => t.showCard(c.id);
+            res.appendChild(div);
+          });
+          refreshGradients(k);
+        });
+
+        ['pending', 'q1', 'q2', 'q3', 'q4'].forEach(id => {
+          new Sortable(document.getElementById(id), { group: 'm', animation: 150, ghostClass: 'sortable-ghost', onEnd: (evt) => { save(); refreshGradients(evt.from.id); refreshGradients(evt.to.id); } });
+        });
+      });
+    });
+  </script>
+</body>
+</html>

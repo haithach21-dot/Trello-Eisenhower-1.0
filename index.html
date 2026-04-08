@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      padding: 12px 16px; margin: 0; color: #172b4d; background: #ffffff;
+    }
+    .control-row { display: flex; align-items: center; margin-bottom: 16px; }
+    .label { 
+      width: 90px; font-size: 12px; font-weight: 700; color: #5e6c84; 
+      text-transform: uppercase; letter-spacing: 0.5px; 
+    }
+    
+    .btn-group { display: flex; gap: 6px; }
+    .btn-score {
+      width: 34px; height: 34px; border: 1px solid #dfe1e6; border-radius: 6px;
+      background: #ffffff; color: #5e6c84; font-weight: 600; font-size: 14px; 
+      cursor: pointer; transition: all 0.2s ease; outline: none;
+    }
+    .btn-score:hover { border-color: #c1c7d0; color: #172b4d; }
+    
+    /* Lý thuyết Ghost Button: Giữ thang màu nhưng tối giản không gian */
+    .btn-score.active-imp { 
+      border-color: #ff7846; color: #ff7846; background: #fff4f0; 
+      box-shadow: 0 0 0 1px #ff7846; 
+    } 
+    .btn-score.active-urg { 
+      border-color: #0079bf; color: #0079bf; background: #edf7ff; 
+      box-shadow: 0 0 0 1px #0079bf; 
+    } 
+
+    /* Khu vực chứa Status Dot và Nút mở Matrix */
+    .status-area { 
+      display: flex; justify-content: space-between; align-items: center; 
+      margin-top: 20px; padding-top: 16px; border-top: 1px solid #ebecf0; 
+    }
+    
+    /* Lý thuyết Status Dot: Gói gọn cảnh báo vào một dấu chấm */
+    .status-wrapper { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #172b4d; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    
+    .dot-q1 { background-color: #eb5a46; box-shadow: 0 0 4px rgba(235,90,70,0.4); } 
+    .dot-q2 { background-color: #f2d600; box-shadow: 0 0 4px rgba(242,214,0,0.4); } 
+    .dot-q3 { background-color: #ff9f1a; box-shadow: 0 0 4px rgba(255,159,26,0.4); } 
+    .dot-q4 { background-color: #8993a4; }
+
+    /* CSS cho nút Mở Ma Trận (Ẩn mình thanh lịch) */
+    .btn-open-matrix { 
+      background: #f4f5f7; color: #172b4d; border: 1px solid #dfe1e6; padding: 6px 12px; 
+      border-radius: 6px; font-weight: 600; cursor: pointer; 
+      transition: all 0.2s; font-size: 13px; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-open-matrix:hover { background: #ebecf0; border-color: #c1c7d0; }
+  </style>
+</head>
+<body>
+
+  <div class="control-row">
+    <div class="label">Quan trọng</div>
+    <div class="btn-group" id="imp-group">
+      <button class="btn-score" data-val="1">1</button>
+      <button class="btn-score" data-val="2">2</button>
+      <button class="btn-score" data-val="3">3</button>
+      <button class="btn-score" data-val="4">4</button>
+      <button class="btn-score" data-val="5">5</button>
+    </div>
+  </div>
+
+  <div class="control-row">
+    <div class="label">Khẩn cấp</div>
+    <div class="btn-group" id="urg-group">
+      <button class="btn-score" data-val="1">1</button>
+      <button class="btn-score" data-val="2">2</button>
+      <button class="btn-score" data-val="3">3</button>
+      <button class="btn-score" data-val="4">4</button>
+      <button class="btn-score" data-val="5">5</button>
+    </div>
+  </div>
+
+  <div class="status-area">
+    <div class="status-wrapper">
+      <div id="status-dot" class="status-dot dot-q4"></div>
+      <span id="status-text">Q4 (Xóa bỏ)</span>
+    </div>
+    
+    <button id="btn-open-matrix" class="btn-open-matrix">
+      Mở Ma Trận ↗
+    </button>
+  </div>
+
+  <script>
+    const t = TrelloPowerUp.iframe();
+
+    let currentImp = 1; let currentUrg = 1;
+    const impButtons = document.querySelectorAll('#imp-group .btn-score');
+    const urgButtons = document.querySelectorAll('#urg-group .btn-score');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
+    function updateUI(imp, urg) {
+      currentImp = imp; currentUrg = urg;
+      impButtons.forEach(btn => btn.classList.toggle('active-imp', btn.dataset.val == imp));
+      urgButtons.forEach(btn => btn.classList.toggle('active-urg', btn.dataset.val == urg));
+      
+      let label = "Q4 (Xóa bỏ)"; let dotClass = "status-dot dot-q4";
+      if (imp >= 4 && urg >= 4) { label = "Q1 (Làm ngay)"; dotClass = "status-dot dot-q1"; }
+      else if (imp >= 4 && urg < 4) { label = "Q2 (Lên lịch)"; dotClass = "status-dot dot-q2"; }
+      else if (imp < 4 && urg >= 4) { label = "Q3 (Ủy quyền)"; dotClass = "status-dot dot-q3"; }
+
+      statusText.textContent = label; statusDot.className = dotClass;
+    }
+
+    function autoSave(imp, urg) {
+      updateUI(imp, urg);
+      const data = { imp: parseInt(imp), urg: parseInt(urg) };
+      t.set('card', 'shared', 'eisenhower', data)
+       .then(() => t.get('board', 'shared', 'matrixMap', {}))
+       .then(map => {
+         map[t.getContext().card] = data;
+         return t.set('board', 'shared', 'matrixMap', map);
+       });
+    }
+
+    impButtons.forEach(btn => { btn.addEventListener('click', (e) => autoSave(e.target.dataset.val, currentUrg)); });
+    urgButtons.forEach(btn => { btn.addEventListener('click', (e) => autoSave(currentImp, e.target.dataset.val)); });
+
+    // Lệnh bật Ma Trận khi bấm nút
+    document.getElementById('btn-open-matrix').addEventListener('click', function() {
+      t.modal({
+        title: 'Ma Trận Eisenhower Tổng Thể',
+        url: './matrix-board.html', 
+        fullscreen: true
+      });
+    });
+
+    t.render(function() {
+      t.get('card', 'shared', 'eisenhower').then(function(data) {
+        if (data) updateUI(data.imp, data.urg);
+        else updateUI(1, 1); 
+      });
+    });
+  </script>
+</body>
+</html>
