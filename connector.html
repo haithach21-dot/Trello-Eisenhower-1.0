@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
   <meta charset="utf-8">
-  <title>Trello Power-Up Connector</title>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
 </head>
 <body>
@@ -11,35 +10,27 @@
       'card-back-section': function(t, options) {
         return {
           title: 'Ma Trận Eisenhower',
-          icon: 'https://p.trellocdn.com/power-up/power-up.svg',
-          content: {
-            type: 'iframe',
-            url: t.signUrl('./index.html'),
-            height: 160
-          }
+          icon: 'https://cdn-icons-png.flaticon.com/512/25/25617.png',
+          content: { type: 'iframe', url: t.signUrl('./index.html'), height: 230 }
         };
       },
       'card-badges': function(t, options) {
         return t.get('card', 'shared', 'eisenhower').then(function(data) {
-          if (!data || !data.imp || !data.urg) return [];
-          let labelText = ""; let badgeColor = "light-gray";
-          if (data.imp >= 4 && data.urg >= 4) { labelText = "Q1: LÀM NGAY"; badgeColor = "red"; }
-          else if (data.imp >= 4 && data.urg < 4) { labelText = "Q2: LÊN LỊCH"; badgeColor = "yellow"; }
-          else if (data.imp < 4 && data.urg >= 4) { labelText = "Q3: ỦY QUYỀN"; badgeColor = "orange"; }
-          else { labelText = "Q4: XÓA BỎ"; badgeColor = "light-gray"; }
-          return [{ text: labelText, color: badgeColor }];
+          if (!data) return [];
+          let label = ""; let color = "light-gray";
+          if (data.imp >= 4 && data.urg >= 4) { label = "Q1: LÀM NGAY"; color = "red"; }
+          else if (data.imp >= 4) { label = "Q2: LÊN LỊCH"; color = "blue"; }
+          else if (data.urg >= 4) { label = "Q3: ỦY QUYỀN"; color = "orange"; }
+          else { label = "Q4: XÓA BỎ"; color = "light-gray"; }
+          return [{ text: label, color: color }];
         });
       },
       'board-buttons': function(t, options) {
         return [{
-          icon: 'https://p.trellocdn.com/power-up/power-up.svg',
+          icon: 'https://cdn-icons-png.flaticon.com/512/25/25617.png',
           text: 'Ma Trận Tổng Thể',
           callback: function(t) {
-            return t.modal({
-              title: 'Ma Trận Eisenhower',
-              url: t.signUrl('./matrix-board.html'),
-              fullscreen: true
-            });
+            return t.modal({ title: 'Ma Trận Eisenhower', url: t.signUrl('./matrix-board.html'), fullscreen: true });
           }
         }];
       }
