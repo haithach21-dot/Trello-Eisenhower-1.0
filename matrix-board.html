@@ -5,40 +5,28 @@
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
   <style>
-    /* 1. ÉP CỨNG TOÀN BỘ KHUNG NHÌN */
+    /* 1. ÉP CỨNG LAYOUT ĐỐI XỨNG */
     body, html { 
       height: 100%; margin: 0; padding: 0; 
       font-family: -apple-system, sans-serif; 
       background: #f4f5f7; color: #172b4d; 
-      overflow: hidden; /* Tuyệt đối không cho cuộn cả trang */
+      overflow: hidden; 
     }
 
     .main-layout { 
-      display: grid; 
-      grid-template-columns: 7.5fr 2.5fr; 
-      gap: 15px; 
-      padding: 15px;
-      height: 100vh;
-      box-sizing: border-box;
+      display: grid; grid-template-columns: 7.5fr 2.5fr; 
+      gap: 15px; padding: 15px; height: 100vh; box-sizing: border-box;
     }
     
-    /* 2. ÉP 4 Ô MA TRẬN ĐỀU NHAU TỐI ĐA */
     .matrix-grid { 
-      display: grid; 
-      grid-template-columns: 1fr 1fr; 
-      grid-template-rows: 1fr 1fr; /* Chia 2 hàng bằng nhau tuyệt đối */
-      gap: 12px;
-      height: 100%;
-      min-height: 0; /* Quan trọng để Grid không bị nở */
+      display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; 
+      gap: 12px; height: 100%; min-height: 0;
     }
     
     .quadrant, .pending-column { 
       background: #ffffff; border-radius: 8px; padding: 12px; 
-      display: flex; flex-direction: column; 
-      border: 1px solid #dfe1e6; 
-      box-shadow: 0 2px 4px rgba(9, 30, 66, 0.08);
-      min-height: 0; /* Ép nội dung phải thu nhỏ lại */
-      overflow: hidden;
+      display: flex; flex-direction: column; border: 1px solid #dfe1e6; 
+      box-shadow: 0 2px 4px rgba(9, 30, 66, 0.08); min-height: 0; overflow: hidden;
     }
     
     .pending-column { background: #f0f2f5; border: 2px dashed #c1c7d0; box-shadow: none; }
@@ -50,20 +38,12 @@
     }
     .q-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; }
     
-    /* MÀU SẮC TIÊU ĐỀ */
-    .q1-title::before { background: #eb5a46; box-shadow: 0 0 4px rgba(235,90,70,0.4); }
-    .q2-title::before { background: #0079bf; box-shadow: 0 0 4px rgba(0,121,191,0.4); }
-    .q3-title::before { background: #ff9f1a; box-shadow: 0 0 4px rgba(255,159,26,0.4); }
-    .q4-title::before { background: #8993a4; }
+    .q1-title::before { background: #eb5a46; } .q2-title::before { background: #0079bf; } 
+    .q3-title::before { background: #ff9f1a; } .q4-title::before { background: #8993a4; }
 
-    /* 3. DANH SÁCH THẺ - NƠI DUY NHẤT ĐƯỢC PHÉP CUỘN */
-    .card-list { 
-      overflow-y: auto; 
-      flex-grow: 1; 
-      min-height: 0; /* Quan trọng cho Flexbox */
-      padding-right: 4px;
-    }
+    .card-list { overflow-y: auto; flex-grow: 1; min-height: 0; padding-right: 4px; }
     
+    /* 2. STYLE THẺ TỐI GIẢN */
     .card-item { 
       padding: 8px 10px; margin-bottom: 6px; border-radius: 5px; 
       border: 1px solid #dfe1e6; background: #fff; 
@@ -118,6 +98,7 @@
       return { label: `${d.getDate()}/${d.getMonth() + 1}`, isOverdue: d < new Date() };
     }
 
+    // 3. THANG MÀU GRADIENT
     function refreshGradients(listId) {
       const list = document.getElementById(listId);
       if (!list) return;
@@ -177,10 +158,24 @@
             const deadline = formatDeadline(c.due);
             const div = document.createElement('div'); div.className = `card-item ${c.done?'is-done':''}`; div.dataset.id = c.id;
             div.innerHTML = `<div class="card-main"><input type="checkbox" class="checkbox-custom" ${c.done?'checked':''}> <span class="card-name" title="${c.name}">${c.name}</span></div>${deadline ? `<span class="deadline-tag ${deadline.isOverdue ? 'deadline-overdue' : ''}">${deadline.label}</span>` : ''}`;
+            
+            // 4. LOGIC TÍCH HOÀN THÀNH KÈM NHÃN XANH
             div.querySelector('input').onclick = (e) => {
               e.stopPropagation();
-              t.set(c.id, 'shared', 'completed', e.target.checked).then(() => { div.classList.toggle('is-done', e.target.checked); refreshGradients(k); });
+              const isChecked = e.target.checked;
+              
+              if (isChecked) {
+                t.addCardLabel(c.id, { color: 'green', name: 'Done' });
+              } else {
+                t.removeCardLabel(c.id, { color: 'green', name: 'Done' });
+              }
+
+              t.set(c.id, 'shared', 'completed', isChecked).then(() => { 
+                div.classList.toggle('is-done', isChecked); 
+                refreshGradients(k); 
+              });
             };
+
             div.ondblclick = () => t.showCard(c.id);
             res.appendChild(div);
           });
