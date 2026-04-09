@@ -5,7 +5,6 @@
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
   <style>
-    /* CSS GIỮ NGUYÊN NHƯ BẢN GỐC CỦA THÀNH */
     body, html { height: 100%; margin: 0; padding: 0; font-family: -apple-system, sans-serif; background: #f4f5f7; color: #172b4d; overflow: hidden; }
     .main-layout { display: grid; grid-template-columns: 7.5fr 2.5fr; gap: 15px; padding: 15px; height: 100vh; box-sizing: border-box; }
     .matrix-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; height: 100%; min-height: 0; }
@@ -15,14 +14,13 @@
     .q-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; }
     .q1-title::before { background: #eb5a46; } .q2-title::before { background: #0079bf; }
     .q3-title::before { background: #ff9f1a; } .q4-title::before { background: #8993a4; }
-    .card-list { overflow-y: auto; flex-grow: 1; min-height: 0; padding-right: 4px; }
+    .card-list { overflow-y: auto; flex-grow: 1; min-height: 50px; padding-right: 4px; }
     .card-item { padding: 8px 10px; margin-bottom: 6px; border-radius: 5px; border: 1px solid #dfe1e6; background: #fff; display: flex; align-items: center; justify-content: space-between; cursor: grab; transition: background 0.15s ease; }
     #q1 .card-item { border-left: 3px solid #eb5a46; } #q2 .card-item { border-left: 3px solid #0079bf; } #q3 .card-item { border-left: 3px solid #ff9f1a; } #q4 .card-item { border-left: 3px solid #8993a4; }
     #pending .card-item { border-left: 3px solid #5e6c84; border-left-style: dashed; }
-    .card-item.is-done { opacity: 0.4; filter: grayscale(1); border-left-color: #dfe1e6 !important; }
+    .card-item.is-done { opacity: 0.4; filter: grayscale(1); border-left-color: #dfe1e6 !important; background-color: #fafbfc !important; }
     .card-main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
     .card-name { font-weight: 500; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .deadline-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; background: #f4f5f7; color: #5e6c84; font-weight: 600; white-space: nowrap; margin-left: 8px; border: 1px solid #ebecf0; }
     .checkbox-custom { width: 14px; height: 14px; cursor: pointer; margin: 0; flex-shrink: 0; }
     ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 10px; }
   </style>
@@ -44,7 +42,7 @@
   <script>
     const t = TrelloPowerUp.iframe();
     
-    // --- PHẦN CÀI ĐẶT API ---
+    // --- CÀI ĐẶT API ---
     const API_KEY = 'DÁN_KEY_CỦA_THÀNH_VÀO_ĐÂY'; 
 
     async function syncTrelloDone(cardId, isChecked) {
@@ -54,38 +52,31 @@
         if (token) localStorage.setItem('t_token', token);
       }
       if (!token) return;
-
       try {
-        await fetch(`https://api.trello.com/1/cards/${cardId}?dueComplete=${isChecked}&key=${API_KEY}&token=${token}`, {
-          method: 'PUT'
-        });
-      } catch (e) { console.error("Lỗi API:", e); }
+        await fetch(`https://api.trello.com/1/cards/${cardId}?dueComplete=${isChecked}&key=${API_KEY}&token=${token}`, { method: 'PUT' });
+      } catch (e) { console.error("API Error:", e); }
     }
-    // ------------------------
 
     function refreshGradients(listId) {
       const list = document.getElementById(listId);
       if (!list) return;
       const items = list.querySelectorAll('.card-item:not(.is-done)');
       const total = items.length;
-      let h, s, lStart;
-      if (listId === 'q1') { h = 9; s = 80; lStart = 95; }
-      else if (listId === 'q2') { h = 202; s = 90; lStart = 94; }
-      else if (listId === 'q3') { h = 35; s = 90; lStart = 95; }
-      else if (listId === 'q4') { h = 210; s = 16; lStart = 96; }
-      else { h = 0; s = 0; lStart = 97; }
-
+      let h = (listId==='q1'?9 : listId==='q2'?202 : listId==='q3'?35 : 210);
       items.forEach((item, i) => {
-        const lightness = total > 1 ? lStart + ((100 - lStart) * (i / (total - 1))) : lStart;
-        item.style.backgroundColor = `hsl(${h}, ${s}%, ${lightness}%)`;
+        const lightness = total > 1 ? 95 + (i * (5 / (total - 1))) : 95;
+        item.style.backgroundColor = `hsl(${h}, 70%, ${lightness}%)`;
       });
-      list.querySelectorAll('.is-done').forEach(el => el.style.backgroundColor = '#fafbfc');
     }
 
     const save = () => {
-      const ids = (qid) => [...document.getElementById(qid).children].map(e => e.dataset.id);
-      const data = { pending: ids('pending'), q1: ids('q1'), q2: ids('q2'), q3: ids('q3'), q4: ids('q4') };
+      const getIds = (qid) => {
+        const el = document.getElementById(qid);
+        return el ? [...el.children].map(e => e.dataset.id).filter(id => id) : [];
+      };
+      const data = { pending: getIds('pending'), q1: getIds('q1'), q2: getIds('q2'), q3: getIds('q3'), q4: getIds('q4') };
       t.set('board', 'shared', 'matrixOrder', data);
+      
       Object.keys(data).forEach(k => {
         if (k === 'pending') return;
         let i = 1, u = 1;
@@ -95,19 +86,20 @@
     };
 
     t.render(() => {
-      Promise.all([
-        t.cards('id', 'name', 'due'),
+      return Promise.all([
+        t.cards('id', 'name'),
         t.get('board', 'shared', 'matrixOrder', {pending:[], q1:[], q2:[], q3:[], q4:[]}),
         t.get('board', 'shared', 'matrixMap', {})
       ]).then(async ([cards, order, map]) => {
         const cat = {pending:[], q1:[], q2:[], q3:[], q4:[]};
+        
         for(let c of cards) {
           c.done = await t.get(c.id, 'shared', 'completed', false);
           let q = 'pending'; 
-          if (order.q1.includes(c.id)) q = 'q1';
-          else if (order.q2.includes(c.id)) q = 'q2';
-          else if (order.q3.includes(c.id)) q = 'q3';
-          else if (order.q4.includes(c.id)) q = 'q4';
+          if (order.q1?.includes(c.id)) q = 'q1';
+          else if (order.q2?.includes(c.id)) q = 'q2';
+          else if (order.q3?.includes(c.id)) q = 'q3';
+          else if (order.q4?.includes(c.id)) q = 'q4';
           else if (map[c.id]) {
             const d = map[c.id];
             if(d.imp>=4 && d.urg>=4) q='q1'; else if(d.imp>=4) q='q2'; else if(d.urg>=4) q='q3'; else q='q4';
@@ -116,36 +108,41 @@
         }
 
         Object.keys(cat).forEach(k => {
-          const res = document.getElementById(k); 
-          if (!res) return;
-          res.innerHTML = ''; // Xóa ruột của card-list, không ảnh hưởng tiêu đề bên ngoài
-
+          const listEl = document.getElementById(k);
+          if (!listEl) return;
+          
+          listEl.innerHTML = ''; // Chỉ xóa nội dung bên trong card-list
           const currentOrder = order[k] || [];
+          
           cat[k].sort((a,b) => (currentOrder.indexOf(a.id)===-1?99:currentOrder.indexOf(a.id)) - (currentOrder.indexOf(b.id)===-1?99:currentOrder.indexOf(b.id))).forEach(c => {
-            const div = document.createElement('div'); 
-            div.className = `card-item ${c.done?'is-done':''}`; 
+            const div = document.createElement('div');
+            div.className = `card-item ${c.done ? 'is-done' : ''}`;
             div.dataset.id = c.id;
             div.innerHTML = `<div class="card-main"><input type="checkbox" class="checkbox-custom" ${c.done?'checked':''}> <span class="card-name" title="${c.name}">${c.name}</span></div>`;
             
             div.querySelector('input').onchange = (e) => {
-              const isChecked = e.target.checked;
-              t.set(c.id, 'shared', 'completed', isChecked).then(() => { 
-                div.classList.toggle('is-done', isChecked); 
-                syncTrelloDone(c.id, isChecked); // GỌI API ĐỂ TÍCH XANH
-                refreshGradients(k); 
+              const check = e.target.checked;
+              t.set(c.id, 'shared', 'completed', check).then(() => {
+                div.classList.toggle('is-done', check);
+                syncTrelloDone(c.id, check);
+                refreshGradients(k);
               });
             };
-
             div.ondblclick = () => t.showCard(c.id);
-            res.appendChild(div);
+            listEl.appendChild(div);
           });
           refreshGradients(k);
         });
 
+        // Khởi tạo Sortable một lần duy nhất
         ['pending', 'q1', 'q2', 'q3', 'q4'].forEach(id => {
-          new Sortable(document.getElementById(id), { group: 'm', animation: 150, onEnd: save });
+          const el = document.getElementById(id);
+          if (el && !el.dataset.sortable) {
+            new Sortable(el, { group: 'm', animation: 150, onEnd: save });
+            el.dataset.sortable = 'true';
+          }
         });
-      });
+      }).catch(err => console.error("Render Error:", err));
     });
   </script>
 </body>
