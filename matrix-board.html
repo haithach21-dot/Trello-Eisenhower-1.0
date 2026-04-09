@@ -9,19 +9,18 @@
     .main-layout { display: grid; grid-template-columns: 7.5fr 2.5fr; gap: 15px; padding: 15px; height: 100vh; box-sizing: border-box; }
     .matrix-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; height: 100%; min-height: 0; }
     .quadrant, .pending-column { background: #ffffff; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; border: 1px solid #dfe1e6; box-shadow: 0 2px 4px rgba(9, 30, 66, 0.08); min-height: 0; overflow: hidden; }
-    .pending-column { background: #f0f2f5; border: 2px dashed #c1c7d0; box-shadow: none; }
+    .pending-column { background: #f0f2f5; border: 2px dashed #c1c7d0; }
     .q-title { font-weight: 700; font-size: 11px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #ebecf0; display: flex; align-items: center; gap: 8px; text-transform: uppercase; flex-shrink: 0; }
     .q-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; }
     .q1-title::before { background: #eb5a46; } .q2-title::before { background: #0079bf; }
     .q3-title::before { background: #ff9f1a; } .q4-title::before { background: #8993a4; }
-    .card-list { overflow-y: auto; flex-grow: 1; min-height: 50px; padding-right: 4px; }
-    .card-item { padding: 8px 10px; margin-bottom: 6px; border-radius: 5px; border: 1px solid #dfe1e6; background: #fff; display: flex; align-items: center; justify-content: space-between; cursor: grab; transition: background 0.15s ease; }
+    .card-list { overflow-y: auto; flex-grow: 1; min-height: 20px; }
+    .card-item { padding: 8px 10px; margin-bottom: 6px; border-radius: 5px; border: 1px solid #dfe1e6; background: #fff; display: flex; align-items: center; justify-content: space-between; cursor: grab; }
     #q1 .card-item { border-left: 3px solid #eb5a46; } #q2 .card-item { border-left: 3px solid #0079bf; } #q3 .card-item { border-left: 3px solid #ff9f1a; } #q4 .card-item { border-left: 3px solid #8993a4; }
     #pending .card-item { border-left: 3px solid #5e6c84; border-left-style: dashed; }
-    .card-item.is-done { opacity: 0.4; filter: grayscale(1); border-left-color: #dfe1e6 !important; background-color: #fafbfc !important; }
-    .card-main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
-    .card-name { font-weight: 500; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .checkbox-custom { width: 14px; height: 14px; cursor: pointer; margin: 0; flex-shrink: 0; }
+    .card-item.is-done { opacity: 0.4; filter: grayscale(1); background: #fafbfc !important; border-left-color: #dfe1e6 !important; }
+    .card-name { font-weight: 500; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+    .checkbox-custom { width: 14px; height: 14px; cursor: pointer; margin-right: 8px; }
     ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 10px; }
   </style>
 </head>
@@ -41,42 +40,36 @@
 
   <script>
     const t = TrelloPowerUp.iframe();
-    
-    // --- CÀI ĐẶT API ---
-    const API_KEY = 'ATATT3xFfGF04VMrz3b5tFljX8RtRkoxCWPqFk8VkSi9WiZqS2JzXYK__KCifWDd29ds57UDqf1rsrKSoGBvAYZe6h5CSZujTnsEBpZTwp5SnIVRkRJbla4H611RqyrmbHNyRcdRhIvkjVsNfFZZl_OAZ4anBiBiARTOTdkZg7GHmi3OzDc1AiA=B5F86389'; 
 
-    async function syncTrelloDone(cardId, isChecked) {
-      let token = localStorage.getItem('t_token');
-      if (!token) {
-        token = prompt("Vui lòng nhập Trello Token để kích hoạt Tích Xanh:");
-        if (token) localStorage.setItem('t_token', token);
-      }
-      if (!token) return;
+    // ==========================================
+    // 1. CẤU HÌNH API TRỰC TIẾP TẠI ĐÂY
+    // ==========================================
+    const API_KEY = 'ed7fd3d656b93624182c069744866f76'; 
+    const API_TOKEN = 'ATATT3xFfGF04VMrz3b5tFljX8RtRkoxCWPqFk8VkSi9WiZqS2JzXYK__KCifWDd29ds57UDqf1rsrKSoGBvAYZe6h5CSZujTnsEBpZTwp5SnIVRkRJbla4H611RqyrmbHNyRcdRhIvkjVsNfFZZl_OAZ4anBiBiARTOTdkZg7GHmi3OzDc1AiA=B5F86389';
+
+    async function syncTrello(cardId, checked) {
+      if (!API_KEY || !API_TOKEN) return;
       try {
-        await fetch(`https://api.trello.com/1/cards/${cardId}?dueComplete=${isChecked}&key=${API_KEY}&token=${token}`, { method: 'PUT' });
-      } catch (e) { console.error("API Error:", e); }
+        await fetch(`https://api.trello.com/1/cards/${cardId}?dueComplete=${checked}&key=${API_KEY}&token=${API_TOKEN}`, { 
+          method: 'PUT' 
+        });
+      } catch (e) { console.error("API Sync Error:", e); }
     }
 
     function refreshGradients(listId) {
       const list = document.getElementById(listId);
       if (!list) return;
       const items = list.querySelectorAll('.card-item:not(.is-done)');
-      const total = items.length;
       let h = (listId==='q1'?9 : listId==='q2'?202 : listId==='q3'?35 : 210);
       items.forEach((item, i) => {
-        const lightness = total > 1 ? 95 + (i * (5 / (total - 1))) : 95;
-        item.style.backgroundColor = `hsl(${h}, 70%, ${lightness}%)`;
+        item.style.backgroundColor = `hsl(${h}, 70%, ${97 - (i * 0.5)}%)`;
       });
     }
 
     const save = () => {
-      const getIds = (qid) => {
-        const el = document.getElementById(qid);
-        return el ? [...el.children].map(e => e.dataset.id).filter(id => id) : [];
-      };
+      const getIds = (id) => [...(document.getElementById(id)?.children || [])].map(e => e.dataset.id).filter(i => i);
       const data = { pending: getIds('pending'), q1: getIds('q1'), q2: getIds('q2'), q3: getIds('q3'), q4: getIds('q4') };
       t.set('board', 'shared', 'matrixOrder', data);
-      
       Object.keys(data).forEach(k => {
         if (k === 'pending') return;
         let i = 1, u = 1;
@@ -92,10 +85,9 @@
         t.get('board', 'shared', 'matrixMap', {})
       ]).then(async ([cards, order, map]) => {
         const cat = {pending:[], q1:[], q2:[], q3:[], q4:[]};
-        
         for(let c of cards) {
           c.done = await t.get(c.id, 'shared', 'completed', false);
-          let q = 'pending'; 
+          let q = 'pending';
           if (order.q1?.includes(c.id)) q = 'q1';
           else if (order.q2?.includes(c.id)) q = 'q2';
           else if (order.q3?.includes(c.id)) q = 'q3';
@@ -110,31 +102,36 @@
         Object.keys(cat).forEach(k => {
           const listEl = document.getElementById(k);
           if (!listEl) return;
+          listEl.innerHTML = ''; // Chỉ xóa nội dung bên trong, giữ nguyên các Node bao quanh.
           
-          listEl.innerHTML = ''; // Chỉ xóa nội dung bên trong card-list
           const currentOrder = order[k] || [];
-          
           cat[k].sort((a,b) => (currentOrder.indexOf(a.id)===-1?99:currentOrder.indexOf(a.id)) - (currentOrder.indexOf(b.id)===-1?99:currentOrder.indexOf(b.id))).forEach(c => {
             const div = document.createElement('div');
             div.className = `card-item ${c.done ? 'is-done' : ''}`;
             div.dataset.id = c.id;
-            div.innerHTML = `<div class="card-main"><input type="checkbox" class="checkbox-custom" ${c.done?'checked':''}> <span class="card-name" title="${c.name}">${c.name}</span></div>`;
             
-            div.querySelector('input').onchange = (e) => {
-              const check = e.target.checked;
-              t.set(c.id, 'shared', 'completed', check).then(() => {
-                div.classList.toggle('is-done', check);
-                syncTrelloDone(c.id, check);
+            const chk = document.createElement('input');
+            chk.type = 'checkbox'; chk.className = 'checkbox-custom'; chk.checked = c.done;
+            chk.onchange = (e) => {
+              const checked = e.target.checked;
+              t.set(c.id, 'shared', 'completed', checked).then(() => {
+                div.classList.toggle('is-done', checked);
+                syncTrello(c.id, checked);
                 refreshGradients(k);
               });
             };
+
+            const span = document.createElement('span');
+            span.className = 'card-name'; span.textContent = c.name; span.title = c.name;
+
+            div.appendChild(chk);
+            div.appendChild(span);
             div.ondblclick = () => t.showCard(c.id);
             listEl.appendChild(div);
           });
           refreshGradients(k);
         });
 
-        // Khởi tạo Sortable một lần duy nhất
         ['pending', 'q1', 'q2', 'q3', 'q4'].forEach(id => {
           const el = document.getElementById(id);
           if (el && !el.dataset.sortable) {
@@ -142,7 +139,7 @@
             el.dataset.sortable = 'true';
           }
         });
-      }).catch(err => console.error("Render Error:", err));
+      }).catch(e => console.error("Matrix Logic Error:", e));
     });
   </script>
 </body>
